@@ -48,7 +48,7 @@ func testAppendRead(t *testing.T, log *Log) {
 func testOutOfRangeErr(t *testing.T, log *Log) {
 	read, err := log.Read(1)
 	require.Nil(t, read)
-	require.NoError(t, err)
+	require.Error(t, err)
 }
 
 func testInitExisting(t *testing.T, o *Log) {
@@ -111,5 +111,5 @@ func testTruncate(t *testing.T, log *Log) {
 	require.NoError(t, err)
 
 	_, err = log.Read(0)
-	require.NoError(t, err)
+	require.Error(t, err)
 }
