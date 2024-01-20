@@ -4,10 +4,10 @@ compile:
 	--go_opt=paths=source_relative \
 	--proto_path=.
 
-.PHONY test
-test/race:
+.PHONY: test
+test:
 	go test -v ./...
 
-.PHONY test/race
+.PHONY: test/race
 test/race:
 	go test -race ./...
