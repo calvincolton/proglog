@@ -44,7 +44,9 @@ func setupTest(t *testing.T, fn func(*Config)) (
 	require.NoError(t, err)
 
 	clientTLSConfig, err := config.SetupTLSConfig(config.TLSConfig{
-		CAFile: config.CAFile,
+		CertFile: config.ClientCertFile,
+		KeyFile:  config.ClientKeyFile,
+		CAFile:   config.CAFile,
 	})
 	require.NoError(t, err)
 	clientCreds := credentials.NewTLS(clientTLSConfig)
@@ -61,6 +63,7 @@ func setupTest(t *testing.T, fn func(*Config)) (
 		KeyFile:       config.ServerKeyFile,
 		CAFile:        config.CAFile,
 		ServerAddress: l.Addr().String(),
+		Server:        true,
 	})
 	require.NoError(t, err)
 	serverCreds := credentials.NewTLS(serverTLSConfig)
@@ -89,44 +92,6 @@ func setupTest(t *testing.T, fn func(*Config)) (
 		cc.Close()
 		l.Close()
 	}
-
-	//
-	//
-	//
-
-	// clientOptions := []grpc.DialOption{
-	// 	grpc.WithTransportCredentials(insecure.NewCredentials()),
-	// }
-	// cc, err := grpc.Dial(l.Addr().String(), clientOptions...)
-	// require.NoError(t, err)
-
-	// dir, err := os.MkdirTemp("", "server-test")
-	// require.NoError(t, err)
-
-	// clog, err := log.NewLog(dir, log.Config{})
-	// require.NoError(t, err)
-
-	// cfg = &Config{
-	// 	CommitLog: clog,
-	// }
-	// if fn != nil {
-	// 	fn(cfg)
-	// }
-	// server, err := NewGRPCServer(cfg)
-	// require.NoError(t, err)
-
-	// go func() {
-	// 	server.Serve(l)
-	// }()
-
-	// client = api.NewLogClient(cc)
-
-	// return client, cfg, func() {
-	// 	server.Stop()
-	// 	cc.Close()
-	// 	l.Close()
-	// 	clog.Remove()
-	// }
 }
 
 func testProduceConsume(t *testing.T, client api.LogClient, config *Config) {

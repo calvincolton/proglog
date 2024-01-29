@@ -10,9 +10,9 @@
     },
     "names": [
         {
-            "C": "US",
-            "L": "SF",
-            "ST": "CA",
+            "C": "CA",
+            "L": "ON",
+            "ST": "Toronto",
             "O": "My Awesome Company",
             "OU": "Distributed Services"
         }
