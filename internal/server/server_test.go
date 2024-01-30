@@ -45,23 +45,6 @@ func setupTest(t *testing.T, fn func(*Config)) (
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
-	// clientTLSConfig, err := config.SetupTLSConfig(config.TLSConfig{
-	// 	CertFile: config.ClientCertFile,
-	// 	KeyFile:  config.ClientKeyFile,
-	// 	CAFile:   config.CAFile,
-	// })
-	// require.NoError(t, err)
-	// clientCreds := credentials.NewTLS(clientTLSConfig)
-	// cc, err := grpc.Dial(
-	// 	l.Addr().String(),
-	// 	grpc.WithTransportCredentials(clientCreds),
-	// )
-	// require.NoError(t, err)
-	//
-	// client = api.NewLogClient(cc)
-	//
-	//
-	//
 	newClient := func(crtPath, keyPath string) (
 		*grpc.ClientConn,
 		api.LogClient,
@@ -92,9 +75,6 @@ func setupTest(t *testing.T, fn func(*Config)) (
 		config.NobodyClientCertFile,
 		config.NobodyClientKeyFile,
 	)
-	//
-	//
-	//
 
 	serverTLSConfig, err := config.SetupTLSConfig(config.TLSConfig{
 		CertFile:      config.ServerCertFile,
