@@ -21,9 +21,9 @@ func configFile(filename string) string {
 	if dir := os.Getenv("CONFIG_DIR"); dir != "" {
 		return filepath.Join(dir, filename)
 	}
-	cwd, err := os.Getwd()
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		panic(err)
 	}
-	return filepath.Join(cwd, filename)
+	return filepath.Join(homeDir, "Repositories/proglog", filename)
 }
