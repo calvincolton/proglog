@@ -54,5 +54,5 @@ test: $(CONFIG_PATH)/policy.csv $(CONFIG_PATH)/model.conf
 
 .PHONY: test/race
 test/race:
-	go test -race ./...
+	grc go test -race ./...
 	
