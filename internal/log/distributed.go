@@ -240,6 +240,24 @@ func (l *DistributedLog) Close() error {
 	return l.log.Close()
 }
 
+func (l *DistributedLog) GetServers() ([]*api.Server, error) {
+	future := l.raft.GetConfiguration()
+	if err := future.Error(); err != nil {
+		return nil, err
+	}
+
+	var servers []*api.Server
+	for _, server := range future.Configuration().Servers {
+		servers = append(servers, &api.Server{
+			Id:       string(server.ID),
+			RpcAddr:  string(server.Address),
+			IsLeader: l.raft.Leader() == server.Address,
+		})
+	}
+
+	return servers, nil
+}
+
 //
 // Raft Finite State Machine
 //
@@ -450,7 +468,7 @@ func (s *StreamLayer) Accept() (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	if bytes.Compare([]byte{byte(RaftRPC)}, b) != 0 {
+	if !bytes.Equal([]byte{byte(RaftRPC)}, b) {
 		return nil, fmt.Errorf("not a raft rpc")
 	}
 	if s.serverTLSConfig != nil {

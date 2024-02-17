@@ -101,7 +101,7 @@ func (a *Agent) setupLog() error {
 		if _, err := reader.Read(b); err != nil {
 			return false
 		}
-		return bytes.Compare(b, []byte{byte(log.RaftRPC)}) == 0
+		return bytes.Equal(b, []byte{byte(log.RaftRPC)})
 	})
 
 	logConfig := log.Config{}
@@ -132,8 +132,9 @@ func (a *Agent) setupServer() error {
 		a.Config.ACLPolicyFile,
 	)
 	serverConfig := &server.Config{
-		CommitLog:  a.log,
-		Authorizer: authorizer,
+		CommitLog:   a.log,
+		Authorizer:  authorizer,
+		GetServerer: a.log,
 	}
 
 	var opts []grpc.ServerOption
