@@ -14,6 +14,8 @@ import (
 )
 
 func main() {
+	cli := &cli{}
+
 	cmd := &cobra.Command{
 		Use:     "proglog",
 		PreRunE: cli.setupConfig,
