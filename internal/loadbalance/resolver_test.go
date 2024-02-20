@@ -29,8 +29,8 @@ func TestResolver(t *testing.T) {
 		ServerAddress: "127.0.0.1",
 	})
 	require.NoError(t, err)
-
 	serverCreds := credentials.NewTLS(tlsConfig)
+
 	srv, err := server.NewGRPCServer(&server.Config{
 		GetServerer: &getServers{},
 	}, grpc.Creds(serverCreds))
@@ -47,20 +47,21 @@ func TestResolver(t *testing.T) {
 		ServerAddress: "127.0.0.1",
 	})
 	require.NoError(t, err)
-
 	clientCreds := credentials.NewTLS(tlsConfig)
 	opts := resolver.BuildOptions{
 		DialCreds: clientCreds,
 	}
 	r := &loadbalance.Resolver{}
 	_, err = r.Build(
-		resolver.Target{Endpoint: l.Addr().String()},
+		resolver.Target{
+			Endpoint: l.Addr().String(),
+		},
 		conn,
 		opts,
 	)
 	require.NoError(t, err)
 
-	expState := resolver.State{
+	wantState := resolver.State{
 		Addresses: []resolver.Address{{
 			Addr:       "localhost:9001",
 			Attributes: attributes.New("is_leader", true),
@@ -69,11 +70,11 @@ func TestResolver(t *testing.T) {
 			Attributes: attributes.New("is_leader", false),
 		}},
 	}
-	require.Equal(t, expState, conn.state)
+	require.Equal(t, wantState, conn.state)
 
 	conn.state.Addresses = nil
 	r.ResolveNow(resolver.ResolveNowOptions{})
-	require.Equal(t, expState, conn.State)
+	require.Equal(t, wantState, conn.state)
 }
 
 type getServers struct{}
@@ -94,12 +95,18 @@ type clientConn struct {
 	state resolver.State
 }
 
+func (c *clientConn) UpdateState(state resolver.State) {
+	c.state = state
+}
+
 func (c *clientConn) ReportError(err error) {}
 
 func (c *clientConn) NewAddress(addrs []resolver.Address) {}
 
 func (c *clientConn) NewServiceConfig(config string) {}
 
-func (c *clientConn) ParseServiceConfig(config string) *serviceconfig.ParseResult {
+func (c *clientConn) ParseServiceConfig(
+	config string,
+) *serviceconfig.ParseResult {
 	return nil
 }
