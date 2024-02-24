@@ -22,16 +22,21 @@ import (
 )
 
 type Config struct {
-	Bootstrap       bool
 	ServerTLSConfig *tls.Config
 	PeerTLSConfig   *tls.Config
-	DataDir         string
-	BindAddr        string
-	RPCPort         int
-	NodeName        string
-	StartJoinAddrs  []string
-	ACLModelFile    string
-	ACLPolicyFile   string
+	// DataDir stores the log and raft data.
+	DataDir string
+	// BindAddr is the address serf runs on.
+	BindAddr string
+	// RPCPort is the port for client (and Raft) connections.
+	RPCPort int
+	// Raft server id.
+	NodeName string
+	// Bootstrap should be set to true when starting the first node of the cluster.
+	StartJoinAddrs []string
+	ACLModelFile   string
+	ACLPolicyFile  string
+	Bootstrap      bool
 }
 
 func (c Config) RPCAddr() (string, error) {
@@ -43,7 +48,7 @@ func (c Config) RPCAddr() (string, error) {
 }
 
 type Agent struct {
-	Config
+	Config Config
 
 	mux        cmux.CMux
 	log        *log.DistributedLog
@@ -76,22 +81,30 @@ func New(config Config) (*Agent, error) {
 	return a, nil
 }
 
-func (a *Agent) setupMux() error {
-	rpcAddr := fmt.Sprintf(":%d", a.Config.RPCPort)
-	ln, err := net.Listen("tcp", rpcAddr)
-	if err != nil {
-		return err
-	}
-	a.mux = cmux.New(ln)
-	return nil
-}
-
 func (a *Agent) setupLogger() error {
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		return err
 	}
 	zap.ReplaceGlobals(logger)
+	return nil
+}
+
+func (a *Agent) setupMux() error {
+	addr, err := net.ResolveTCPAddr("tcp", a.Config.BindAddr)
+	if err != nil {
+		return err
+	}
+	rpcAddr := fmt.Sprintf(
+		"%s:%d",
+		addr.IP.String(),
+		a.Config.RPCPort,
+	)
+	ln, err := net.Listen("tcp", rpcAddr)
+	if err != nil {
+		return err
+	}
+	a.mux = cmux.New(ln)
 	return nil
 }
 
@@ -103,16 +116,19 @@ func (a *Agent) setupLog() error {
 		}
 		return bytes.Equal(b, []byte{byte(log.RaftRPC)})
 	})
-
 	logConfig := log.Config{}
 	logConfig.Raft.StreamLayer = log.NewStreamLayer(
 		raftLn,
 		a.Config.ServerTLSConfig,
 		a.Config.PeerTLSConfig,
 	)
+	rpcAddr, err := a.Config.RPCAddr()
+	if err != nil {
+		return err
+	}
+	logConfig.Raft.BindAddr = rpcAddr
 	logConfig.Raft.LocalID = raft.ServerID(a.Config.NodeName)
 	logConfig.Raft.Bootstrap = a.Config.Bootstrap
-	var err error
 	a.log, err = log.NewDistributedLog(
 		a.Config.DataDir,
 		logConfig,
@@ -136,19 +152,16 @@ func (a *Agent) setupServer() error {
 		Authorizer:  authorizer,
 		GetServerer: a.log,
 	}
-
 	var opts []grpc.ServerOption
 	if a.Config.ServerTLSConfig != nil {
 		creds := credentials.NewTLS(a.Config.ServerTLSConfig)
 		opts = append(opts, grpc.Creds(creds))
 	}
-
 	var err error
 	a.server, err = server.NewGRPCServer(serverConfig, opts...)
 	if err != nil {
 		return err
 	}
-
 	grpcLn := a.mux.Match(cmux.Any())
 	go func() {
 		if err := a.server.Serve(grpcLn); err != nil {
@@ -174,6 +187,14 @@ func (a *Agent) setupMembership() error {
 	return err
 }
 
+func (a *Agent) serve() error {
+	if err := a.mux.Serve(); err != nil {
+		_ = a.Shutdown()
+		return err
+	}
+	return nil
+}
+
 func (a *Agent) Shutdown() error {
 	a.shutdownLock.Lock()
 	defer a.shutdownLock.Unlock()
@@ -181,7 +202,6 @@ func (a *Agent) Shutdown() error {
 		return nil
 	}
 	a.shutdown = true
-
 	close(a.shutdowns)
 
 	shutdown := []func() error{
@@ -192,19 +212,10 @@ func (a *Agent) Shutdown() error {
 		},
 		a.log.Close,
 	}
-
 	for _, fn := range shutdown {
 		if err := fn(); err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-func (a *Agent) serve() error {
-	if err := a.mux.Serve(); err != nil {
-		_ = a.Shutdown()
-		return err
 	}
 	return nil
 }

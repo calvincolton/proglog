@@ -70,6 +70,7 @@ func setupTest() (*loadbalance.Picker, []*subConn) {
 	return picker, subConns
 }
 
+// subConn implements balancer.SubConn.
 type subConn struct {
 	addrs []resolver.Address
 }
@@ -79,3 +80,5 @@ func (s *subConn) UpdateAddresses(addrs []resolver.Address) {
 }
 
 func (s *subConn) Connect() {}
+
+func (s *subConn) Shutdown() {}

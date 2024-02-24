@@ -55,4 +55,11 @@ test: $(CONFIG_PATH)/policy.csv $(CONFIG_PATH)/model.conf
 .PHONY: test/race
 test/race:
 	grc go test -race ./...
-	
+
+TAG ?= 0.0.1
+
+.PHONY: build/docker
+build/docker:
+	docker build -t github.com/calvincolton/proglog:$(TAG) .
+
+# END: build_docker

@@ -21,6 +21,9 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
+
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 type Config struct {
@@ -70,16 +73,6 @@ func NewGRPCServer(config *Config, grpcOpts ...grpc.ServerOption) (
 		return nil, err
 	}
 
-	// halfSampler := trace.ProbabilitySampler(0.5)
-	// trace.ApplyConfig(trace.Config{
-	// 	DefaultSampler: func(p trace.SamplingParameters) trace.SamplingDecision {
-	// 		if strings.Contains(p.Name, "Produce") {
-	// 			return trace.SamplingDecision{Sample: true}
-	// 		}
-	// 		return halfSampler(p)
-	// 	},
-	// })
-
 	grpcOpts = append(grpcOpts,
 		grpc.StreamInterceptor(
 			grpc_middleware.ChainStreamServer(
@@ -94,6 +87,11 @@ func NewGRPCServer(config *Config, grpcOpts ...grpc.ServerOption) (
 		grpc.StatsHandler(&ocgrpc.ServerHandler{}),
 	)
 	gsrv := grpc.NewServer(grpcOpts...)
+
+	hsrv := health.NewServer()
+	hsrv.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
+	healthpb.RegisterHealthServer(gsrv, hsrv)
+
 	srv, err := newgrpcServer(config)
 	if err != nil {
 		return nil, err
