@@ -4,7 +4,13 @@ metadata:
   name: {{ include "proglog.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels: {{ include "proglog.labels" . | nindent 4 }}
+  {{ if .Values.service.lb }}
+  annotations:
+    service-per-pod-label: "statefulset.kubernetes.io/pod-name"
+    service-per-pod-ports: "{{.Values.rpcPort}}:{{.Values.rpcPort}}"
+  {{ end }}
 spec:
+  # ...
   selector:
     matchLabels: {{ include "proglog.selectorLabels" . | nindent 6 }}
   serviceName: {{ include "proglog.fullname" . }}
@@ -14,12 +20,11 @@ spec:
       name: {{ include "proglog.fullname" . }}
       labels: {{ include "proglog.labels" . | nindent 8 }}
     spec:
-      # initContainers...
       initContainers:
       - name: {{ include "proglog.fullname" . }}-config-init
         image: busybox
         imagePullPolicy: IfNotPresent
-        command:          
+        command:
           - /bin/sh
           - -c
           - |-
@@ -28,13 +33,12 @@ spec:
             data-dir: /var/run/proglog/data
             rpc-port: {{.Values.rpcPort}}
             bind-addr: "$HOSTNAME.proglog.{{.Release.Namespace}}.svc.cluster.local:{{.Values.serfPort}}"
-            bootstrap: $([ $ID = 0 ] && echo true || echo false)
+            bootstrap: $([ $ID = 0 ] && echo true || echo false )
             $([ $ID != 0 ] && echo 'start-join-addrs: "proglog-0.proglog.{{.Release.Namespace}}.svc.cluster.local:{{.Values.serfPort}}"')
-            EOD   
+            EOD
         volumeMounts:
         - name: datadir
           mountPath: /var/run/proglog
-      # containers...
       containers:
       - name: {{ include "proglog.fullname" . }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -45,11 +49,10 @@ spec:
           name: serf
         args:
           - --config-file=/var/run/proglog/config.yaml
-        # probes...
         readinessProbe:
           exec:
             command: ["/bin/grpc_health_probe", "-addr=:{{ .Values.rpcPort }}"]
-          initialDelaySeconds: 10
+          initialDelaySeconds: 5
         livenessProbe:
           exec:
             command: ["/bin/grpc_health_probe", "-addr=:{{ .Values.rpcPort }}"]
